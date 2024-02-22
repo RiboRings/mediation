@@ -1,7 +1,8 @@
+library(dplyr)
 library(tidyr)
 
 # utility function to run mediation
-run.mediation <- function(df, family, boot) {
+run.mediation <- function(df, family, ...) {
   
   fit_m <- do.call(lm, list(formula = formula("Mediator ~ Treatment"),
                             data = df))
@@ -15,16 +16,16 @@ run.mediation <- function(df, family, boot) {
     med_out <- mediate(fit_m, fit_dv,
                        treat = "Treatment",
                        mediator = "Mediator",
-                       boot = boot,
                        control.value = names(which.max(table(df$Treatment))),
-                       treat.value = names(which.min(table(df$Treatment))))
+                       treat.value = names(which.min(table(df$Treatment))),
+                       ...)
     
   } else {
     
     med_out <- mediate(fit_m, fit_dv,
                        treat = "Treatment",
                        mediator = "Mediator",
-                       boot = boot)
+                       ...)
     
   }
   
@@ -76,14 +77,14 @@ make.output <- function(results, p.adj.method) {
 
 # main function to mediate coldata
 mediate_coldata <- function(tse, outcome, treatment, mediator,
-                            family = gaussian(), boot = TRUE) {
+                            family = gaussian(), ...) {
   
   df <- data.frame(Outcome = eval(parse(text = paste0("tse$", outcome))),
                    Treatment = eval(parse(text = paste0("tse$", treatment))),
                    Mediator = eval(parse(text = paste0("tse$", mediator)))) %>%
     drop_na()
 
-  med_out <- run.mediation(df, family, boot)
+  med_out <- run.mediation(df, family, ...)
   
   return(med_out)
   
@@ -93,8 +94,8 @@ mediate_coldata <- function(tse, outcome, treatment, mediator,
 # main function to mediate assay or reduced dimension
 mediate_assay <- function(tse, outcome, treatment,
                           assay.type = NULL, dim.type = NULL,
-                          family = gaussian(), boot = TRUE,
-                          p.adj.method = "BH") {
+                          family = gaussian(), p.adj.method = "BH",
+                          ...) {
   
   results <- list(Treatment = c(), Mediator = c(), Outcome = c(),
                   ACME_estimate = c(), ADE_estimate = c(), ACME_pval = c(),
@@ -113,6 +114,7 @@ mediate_assay <- function(tse, outcome, treatment,
 
   mediators <- rownames(mat)
   i <- 0
+  
   for (mediator in mediators) {
     
     print(paste(length(mediators) - i, "left"))
@@ -124,7 +126,7 @@ mediate_assay <- function(tse, outcome, treatment,
                      Mediator = mat[mediator, ]) %>%
       drop_na()
     
-    med_out <- run.mediation(df, family, boot)
+    med_out <- run.mediation(df, family, ...)
     
     results <- update.results(results, med_out, treatment, mediator, outcome)
     
