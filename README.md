@@ -8,7 +8,8 @@ In either case, the treatment and the outcome variables are taken from the colDa
 
 ## Prepare for examples
 
-The following code can also be found in the tutorial.R script.
+The following code can also be found in the tutorial.R script. Some example output (both statistical tables and plots) are stored in
+the results folder.
 
 ```
 library(mia)
