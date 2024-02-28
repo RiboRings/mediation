@@ -17,8 +17,11 @@ source("funs.R")
 knitr::opts_chunk$set(warning = FALSE)
 ```
 
+## Dataset 1
+
 ```{r}
 #| label: import-data1
+#| message: FALSE
 tse <- LahtiWAData()
 ```
 
@@ -32,6 +35,8 @@ colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
 tse <- tse[ , tse$nationality %in% c("CentralEurope", "Scandinavia")]
 colData(tse)$nationality <- as.numeric(factor(tse$nationality)) - 1
 ```
+
+### Mediation of alpha diversity
 
 ```{r}
 #| label: alpha-mediation1
@@ -49,7 +54,10 @@ summary(med_out)
 plot(med_out)
 ```
 
+### Mediation of microbiome assay
+
 ```{r}
+#| label: assay-mediation1
 tse <- transformAssay(tse,
                       method = "clr",
                       pseudocount = 1)
@@ -60,20 +68,27 @@ hdma_res <- mediate_hdma(A = tse$nationality,
 ```
 
 ```{r}
+#| label: assay-effects1
 hdma_res$effects %>% knitr::kable()
 ```
 
 ```{r}
+#| label: assay-contributions1
 hdma_res$contributions %>% 
   filter(ab_pv < 0.05) %>%
   knitr::kable()
 ```
 
+## Dataset 2
+
 ```{r}
+#| label: import-data2
+#| message: FALSE
 tse <- OKeefeDSData()
 ```
 
 ```{r}
+#| label: prepare-data2
 tse <- transformAssay(tse,
                       method = "relabundance")
 
@@ -83,6 +98,7 @@ tse <- estimateDiversity(tse,
 ```
 
 ```{r}
+#| label: prepare-data3
 tse <- tse[ , !is.na(tse$bmi_group)]
 tse <- tse[ , !is.na(tse$nationality)]
 
@@ -91,7 +107,10 @@ colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
 colData(tse)$nationality <- as.numeric(factor(tse$nationality))
 ```
 
+### Mediation of alpha diversity
+
 ```{r}
+#| label: alpha-mediation2
 med_out <- mediate_coldata(tse,
                           outcome = "bmi_group",
                           treatment = "nationality",
@@ -102,10 +121,14 @@ summary(med_out)
 ```
 
 ```{r}
+#| label: plt-alpha2
 plot(med_out)
 ```
 
+### Mediation of microbiome assay
+
 ```{r}
+#| label: mediation-assay2
 tse <- transformAssay(tse,
                       method = "clr",
                       pseudocount = 1)
@@ -116,10 +139,12 @@ hdma_res <- mediate_hdma(A = tse$nationality,
 ```
 
 ```{r}
+#| label: assay-effects2
 hdma_res$effects %>% knitr::kable()
 ```
 
 ```{r}
+#| label: assay-contributions2
 hdma_res$contributions %>% 
   filter(ab_pv < 0.05) %>%
   knitr::kable()
