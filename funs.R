@@ -1,5 +1,9 @@
+library(mia)
+library(microbiomeDataSets)
 library(dplyr)
 library(tidyr)
+library(mediation)
+library(hdmed)
 
 # utility function to run mediation
 run.mediation <- function(df, family, ...) {

@@ -1,0 +1,126 @@
+---
+title: "Mediation Analysis for Microbiome Data"
+author: "Giulio Benedetti"
+editor: visual
+---
+
+## setup
+
+```{r}
+#| label: setup
+#| include: FALSE
+
+# Import utilities
+source("funs.R")
+
+# Set chunks options
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+#| label: import-data1
+tse <- LahtiWAData()
+```
+
+```{r}
+#| label: prepare-data1
+tse <- tse[ , !is.na(tse$bmi_group)]
+tse <- tse[ , !is.na(tse$nationality)]
+
+colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
+
+tse <- tse[ , tse$nationality %in% c("CentralEurope", "Scandinavia")]
+colData(tse)$nationality <- as.numeric(factor(tse$nationality)) - 1
+```
+
+```{r}
+#| label: alpha-mediation1
+med_out <- mediate_coldata(tse,
+                           outcome = "bmi_group",
+                           treatment = "nationality",
+                           mediator = "diversity",
+                           boot = TRUE, sims = 1000)
+
+summary(med_out)
+```
+
+```{r}
+#| label: plt-alpha1
+plot(med_out)
+```
+
+```{r}
+tse <- transformAssay(tse,
+                      method = "clr",
+                      pseudocount = 1)
+
+hdma_res <- mediate_hdma(A = tse$nationality,
+                         M = t(assay(tse, "clr")),
+                         Y = tse$bmi_group)
+```
+
+```{r}
+hdma_res$effects %>% knitr::kable()
+```
+
+```{r}
+hdma_res$contributions %>% 
+  filter(ab_pv < 0.05) %>%
+  knitr::kable()
+```
+
+```{r}
+tse <- OKeefeDSData()
+```
+
+```{r}
+tse <- transformAssay(tse,
+                      method = "relabundance")
+
+tse <- estimateDiversity(tse,
+                         index = "shannon",
+                         assay.type = "relabundance")
+```
+
+```{r}
+tse <- tse[ , !is.na(tse$bmi_group)]
+tse <- tse[ , !is.na(tse$nationality)]
+
+colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
+
+colData(tse)$nationality <- as.numeric(factor(tse$nationality))
+```
+
+```{r}
+med_out <- mediate_coldata(tse,
+                          outcome = "bmi_group",
+                          treatment = "nationality",
+                          mediator = "shannon",
+                          boot = TRUE, sims = 1000)
+
+summary(med_out)
+```
+
+```{r}
+plot(med_out)
+```
+
+```{r}
+tse <- transformAssay(tse,
+                      method = "clr",
+                      pseudocount = 1)
+
+hdma_res <- mediate_hdma(A = tse$nationality,
+                         M = t(assay(tse, "clr")),
+                         Y = tse$bmi_group)
+```
+
+```{r}
+hdma_res$effects %>% knitr::kable()
+```
+
+```{r}
+hdma_res$contributions %>% 
+  filter(ab_pv < 0.05) %>%
+  knitr::kable()
+```
