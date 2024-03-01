@@ -6,36 +6,64 @@ library(mediation)
 library(hdmed)
 
 # utility function to run mediation
-run.mediation <- function(df, family, ...) {
+run.mediation <- function(df, family,
+                          covariates = NULL,
+                          relation_m, relation_dv,
+                          ...) {
   
-  fit_m <- do.call(lm, list(formula = formula("Mediator ~ Treatment"),
+  df <- check.args(df, ...)
+  
+  fit_m <- do.call(lm, list(formula = formula(relation_m),
                             data = df))
   
-  fit_dv <- do.call(glm, list(formula = formula("Outcome ~ Treatment + Mediator"),
+  fit_dv <- do.call(glm, list(formula = formula(relation_dv),
                               family = family,
                               data = df))
-  
-  if (is.character(df$Treatment)) {
     
     med_out <- mediate(fit_m, fit_dv,
                        treat = "Treatment",
                        mediator = "Mediator",
-                       control.value = names(which.max(table(df$Treatment))),
-                       treat.value = names(which.min(table(df$Treatment))),
+                       covariates = covariates,
                        ...)
-    
-  } else {
-    
-    med_out <- mediate(fit_m, fit_dv,
-                       treat = "Treatment",
-                       mediator = "Mediator",
-                       ...)
-    
-  }
   
   return(med_out)
   
 }
+
+
+check.args <- function(df, ...) {
+  
+  kwargs <- list(...)
+  
+  if (!is.numeric(df$Treatment) & n_distinct(df$Treatment) > 2) {
+    
+    multilevel_message <- paste(
+      "Too many treatment levels. Consider specifing a treat.value and a control.value\n"
+    )
+    
+    if (!is.null(kwargs[["boot"]])) {
+      
+      if (any(sapply(kwargs[c("control.value", "treat.value")], is.null))) {
+        stop(multilevel_message, call. = FALSE)
+      } else {
+        
+        if (!all(kwargs[c("control.value", "treat.value")] %in% unique(df$Treatment))) {
+          stop(multilevel_message, call. = FALSE)
+        }
+        
+        keep <- df$Treatment %in% kwargs[c("control.value", "treat.value")]
+        message(paste(nrow(df) - sum(keep), "samples removed because different",
+                "from control and treatment."))
+        
+        df <- df[keep, ]
+        
+      }
+    }
+  }
+  
+  return(df)
+}
+
 
 update.results <- function(results, med_out,
                            treatment, mediator, outcome) {
@@ -81,14 +109,37 @@ make.output <- function(results, p.adj.method) {
 
 # main function to mediate coldata
 mediate_coldata <- function(tse, outcome, treatment, mediator,
-                            family = gaussian(), ...) {
+                            family = gaussian(),
+                            covariates = NULL, ...) {
   
   df <- data.frame(Outcome = eval(parse(text = paste0("tse$", outcome))),
                    Treatment = eval(parse(text = paste0("tse$", treatment))),
-                   Mediator = eval(parse(text = paste0("tse$", mediator)))) %>%
-    drop_na()
+                   Mediator = eval(parse(text = paste0("tse$", mediator))))
 
-  med_out <- run.mediation(df, family, ...)
+  relation_m <- "Mediator ~ Treatment"
+  relation_dv <- "Outcome ~ Treatment + Mediator"
+  
+  if (!is.null(covariates)) {
+    for (covariate in covariates) {
+      
+      df[[covariate]] <- eval(parse(text = paste0("tse$", covariate)))
+      
+      relation_m <- paste(relation_m, "+", covariate)
+      relation_dv <- paste(relation_dv, "+", covariate)
+     
+    }
+  }
+  
+  if (any(is.na(df))) {
+    
+    df <- drop_na(df)
+    message(paste(ncol(tse) - nrow(df), "samples removed because of missing data."))
+    
+  }
+
+  med_out <- run.mediation(df, family,
+                           relation_m, relation_dv,
+                           covariates = covariates, ...)
   
   return(med_out)
   
