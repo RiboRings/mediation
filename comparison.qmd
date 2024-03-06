@@ -1,0 +1,86 @@
+---
+title: "Comparison of high-dimensional Methods"
+author: "Giulio Benedetti"
+editor: visual
+---
+
+```{r}
+#| label: setup
+#| include: FALSE
+
+# Import utilities
+source("funs.R")
+
+# Set chunks options
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+#| label: import-data2
+#| message: FALSE
+tse <- OKeefeDSData()
+```
+
+```{r}
+#| label: prepare-data2
+tse <- transformAssay(tse,
+                      method = "relabundance")
+
+tse <- estimateDiversity(tse,
+                         index = "shannon",
+                         assay.type = "relabundance")
+```
+
+```{r}
+tse <- tse[ , !is.na(tse$bmi_group)]
+tse <- tse[ , !is.na(tse$nationality)]
+
+colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
+colData(tse)$nationality <- as.numeric(factor(tse$nationality)) - 1
+
+tse <- transformAssay(tse,
+                      method = "clr",
+                      pseudocount = 1)
+
+tse <- tse[ , tse$timepoint.within.group == 2]
+```
+
+```{r}
+med_res <- mediateAssay(tse,
+                        outcome = "bmi_group",
+                        treatment = "nationality",
+                        assay.type = "clr",
+                        boot = TRUE, sims = 300)
+
+hima_res <- mediate_hima(A = tse$nationality,
+                         M = t(assay(tse, "clr")),
+                         Y = tse$bmi_group)
+
+hdma_res <- mediate_hdma(A = tse$nationality,
+                         M = t(assay(tse, "clr")),
+                         Y = tse$bmi_group)
+
+bslmm_res <- mediate_bslmm(A = tse$nationality,
+                           M = t(assay(tse, "clr")),
+                           Y = tse$bmi_group)
+```
+
+```{r}
+med_res %>%
+  filter(ACME_adjpval > 0.05) %>%
+  knitr::kable()
+
+hima_res$contributions %>% knitr::kable()
+
+hdma_res$contributions %>% knitr::kable()
+
+bslmm_res$contributions %>% knitr::kable()
+```
+
+```{r}
+hima_res$effects %>% knitr::kable()
+
+hdma_res$effects %>% knitr::kable()
+
+bslmm_res$effects %>% knitr::kable()
+```

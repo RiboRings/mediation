@@ -29,14 +29,14 @@ tse <- LahtiWAData()
 #| label: alpha-mediation1
 colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
 
-med_out <- mediate_coldata(tse,
-                           outcome = "bmi_group",
-                           treatment = "nationality",
-                           mediator = "diversity",
-                           covariates = c("sex", "age"),
-                           treat.value = "Scandinavia",
-                           control.value = "CentralEurope",
-                           boot = TRUE, sims = 1000)
+med_out <- mediateColData(tse,
+                          outcome = "bmi_group",
+                          treatment = "nationality",
+                          mediator = "diversity",
+                          covariates = c("sex", "age"),
+                          treat.value = "Scandinavia",
+                          control.value = "CentralEurope",
+                          boot = TRUE, sims = 1000)
 
 summary(med_out)
 ```
@@ -98,27 +98,18 @@ tse <- estimateDiversity(tse,
                          assay.type = "relabundance")
 ```
 
-```{r}
-#| label: prepare-data3
-colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
-
-tse2 <- tse[ , !is.na(tse$bmi_group)]
-tse2 <- tse2[ , !is.na(tse2$nationality)]
-
-tse2 <- tse[ , tse$nationality %in% c("CentralEurope", "Scandinavia")]
-colData(tse2)$nationality <- as.numeric(factor(tse2$nationality)) - 1
-```
-
 ### Mediation of alpha diversity
 
 ```{r}
 #| label: alpha-mediation2
-med_out <- mediate_coldata(tse,
-                           outcome = "bmi_group",
-                           treatment = "nationality",
-                           mediator = "shannon",
-                           covariates = "timepoint.within.group",
-                           boot = TRUE, sims = 1000)
+colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
+
+med_out <- mediateColData(tse,
+                          outcome = "bmi_group",
+                          treatment = "nationality",
+                          mediator = "shannon",
+                          covariates = "timepoint.within.group",
+                          boot = TRUE, sims = 1000)
 
 summary(med_out)
 ```
@@ -131,15 +122,25 @@ plot(med_out)
 ### Mediation of microbiome assay
 
 ```{r}
-#| label: mediation-assay2
-tse <- transformAssay(tse2,
+#| label: prepare-data3
+tse <- tse[ , !is.na(tse$bmi_group)]
+tse <- tse[ , !is.na(tse$nationality)]
+
+colData(tse)$nationality <- as.numeric(factor(tse$nationality)) - 1
+
+tse <- transformAssay(tse,
                       method = "clr",
                       pseudocount = 1)
+```
 
-hdma_res <- mediate_hdma(A = tse$nationality,
+```{r}
+#| label: mediation-assay2
+tse <- tse[ , tse$timepoint.within.group == 2]
+
+hdma_res <- mediate_spcma(A = tse$nationality,
                          M = t(assay(tse, "clr")),
-                         Y = tse$bmi_group,
-                         C1 = matrix(tse$timepoint.within.group))
+                         Y = tse$bmi_group)#,
+                         #C1 = matrix(tse$timepoint.within.group))
 ```
 
 ```{r}
