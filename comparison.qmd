@@ -16,17 +16,16 @@ library(patchwork)
 library(ggVennDiagram)
 
 # Set chunks options
-knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
 ```{r}
-#| label: import-data2
-#| message: FALSE
+#| label: import-data
 tse <- OKeefeDSData()
 ```
 
 ```{r}
-#| label: prepare-data2
+#| label: prepare-data1
 tse <- transformAssay(tse,
                       method = "relabundance")
 
@@ -36,6 +35,7 @@ tse <- estimateDiversity(tse,
 ```
 
 ```{r}
+#| label: prepare-data2
 tse <- tse[ , !is.na(tse$bmi_group)]
 tse <- tse[ , !is.na(tse$nationality)]
 
@@ -50,11 +50,12 @@ tse <- tse[ , tse$timepoint.within.group == 2]
 ```
 
 ```{r}
+#| label: run-mediate
 med_res <- mediateAssay(tse,
                         outcome = "bmi_group",
                         treatment = "nationality",
                         assay.type = "clr",
-                        boot = TRUE, sims = 300)
+                        boot = TRUE, sims = 100)
 
 hima_res <- mediate_hima(A = tse$nationality,
                          M = t(assay(tse, "clr")),
@@ -70,6 +71,7 @@ bslmm_res <- mediate_bslmm(A = tse$nationality,
 ```
 
 ```{r}
+#| label: combine-results
 med_df <- med_res %>%
   rename(mediator = Mediator) %>%
   full_join(bslmm_res$contributions, by = "mediator") %>%
@@ -80,6 +82,7 @@ med_df <- med_res %>%
 ```
 
 ```{r}
+#| label: fun-venn
 plot.venn <- function(med_df, cutoff,
                       pval_cols = c("ab_pv_hima",
                                     "ab_pv_hdma",
@@ -94,49 +97,65 @@ plot.venn <- function(med_df, cutoff,
                      label_geom = "text",
                      label_alpha = 1) +
     scale_fill_gradient(low = "white", high = "red") +
-    labs(title = paste("Cutoff:", cutoff))
+    labs(title = paste("Alpha:", cutoff))
   
   return(p)
 }
 ```
 
 ```{r}
+#| label: plt-venn
+#| fig-height: 7
+#| fig-width: 7
 (plot.venn(med_df, 0.001) | plot.venn(med_df, 0.01)) /
   (plot.venn(med_df, 0.05) | plot.venn(med_df, 0.25)) +
   plot_layout(guides = "collect")
 ```
 
 ```{r}
-plot.overlap <- function(med_df,
-                         method1, method2,
-                         xlab = method1, ylab = method2) {
+#| label: fun-combos
+get.combos <- function(x) {
   
-  df <- data.frame(A = med_df[[method1]],
-                   B = med_df[[method2]],
-                   mediator = med_df[["mediator"]])
+  pval_combos <- t(combn(m = 2, x[c("mediate", "hima", "hdma")]))
+  method_combos <- t(combn(m = 2, c("mediate", "hima", "hdma")))
   
-  p <- ggplot(df, aes(x = A, y = B)) +
-    geom_hline(yintercept = 0.05,
-               linetype = "dashed", colour = "red") +
-    geom_vline(xintercept = 0.05,
-               linetype = "dashed", colour = "red") +
-    geom_point() +
-    geom_text_repel(aes(label = mediator), size = 3) +
-    labs(x = xlab, y = ylab) +
-    theme_classic()
+  mat <- cbind(x[["mediator"]], pval_combos, method_combos)
   
-  return(p)
+  return(mat)
 }
 ```
 
 ```{r}
-plot.overlap(med_df,
-             "ACME_adjpval", "ab_pv_hima",
-             "mediate", "hima") /
-plot.overlap(med_df,
-             "ACME_adjpval", "ab_pv_hdma",
-             "mediate", "hdma") /
-plot.overlap(med_df,
-             "ab_pv_hima", "ab_pv_hdma",
-             "hima", "hdma")
+#| label: find-combos
+comb_df <- med_df %>%
+  transmute(mediator,
+            mediate = ACME_adjpval,
+            hima = ab_pv_hima,
+            hdma = ab_pv_hdma) %>%
+  apply(1, get.combos, simplify = FALSE) %>%
+  do.call(rbind, .) %>%
+  as.data.frame() %>%
+  drop_na() %>%
+  mutate(V2 = as.numeric(V2),
+         V3 = as.numeric(V3))
+
+colnames(comb_df) <- c("mediator", "xval", "yval", "xname", "yname")
+```
+
+```{r}
+#| label: plt-combos
+#| fig-height: 7
+#| fig-width: 7
+ggplot(comb_df, aes(x = xval, y = yval)) +
+  geom_hline(yintercept = 0.05,
+             linetype = "dashed", colour = "red") +
+  geom_vline(xintercept = 0.05,
+             linetype = "dashed", colour = "red") +
+  geom_point() +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1)) +
+  geom_text_repel(aes(label = mediator), size = 2.5) +
+  facet_grid(xname ~ yname) +
+  labs(x = "pval", y = "pval") +
+  theme_bw()
 ```
