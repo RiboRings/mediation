@@ -10,6 +10,10 @@ editor: visual
 
 # Import utilities
 source("funs.R")
+library(ggplot2)
+library(ggrepel)
+library(patchwork)
+library(ggVennDiagram)
 
 # Set chunks options
 knitr::opts_chunk$set(warning = FALSE)
@@ -66,21 +70,73 @@ bslmm_res <- mediate_bslmm(A = tse$nationality,
 ```
 
 ```{r}
-med_res %>%
-  filter(ACME_adjpval > 0.05) %>%
-  knitr::kable()
-
-hima_res$contributions %>% knitr::kable()
-
-hdma_res$contributions %>% knitr::kable()
-
-bslmm_res$contributions %>% knitr::kable()
+med_df <- med_res %>%
+  rename(mediator = Mediator) %>%
+  full_join(bslmm_res$contributions, by = "mediator") %>%
+  full_join(hima_res$contributions, by = "mediator",
+            suffix = c("_bslmm", "")) %>%
+  full_join(hdma_res$contributions, by = "mediator",
+            suffix = c("_hima", "_hdma"))
 ```
 
 ```{r}
-hima_res$effects %>% knitr::kable()
+plot.venn <- function(med_df, cutoff,
+                      pval_cols = c("ab_pv_hima",
+                                    "ab_pv_hdma",
+                                    "ACME_adjpval")) {
+  
+  lis <- lapply(med_df[ , pval_cols],
+                function(col) which(col < cutoff))
+  
+  names(lis) <- c("hima", "hdma", "mediate")
 
-hdma_res$effects %>% knitr::kable()
+  p <- ggVennDiagram(lis,
+                     label_geom = "text",
+                     label_alpha = 1) +
+    scale_fill_gradient(low = "white", high = "red") +
+    labs(title = paste("Cutoff:", cutoff))
+  
+  return(p)
+}
+```
 
-bslmm_res$effects %>% knitr::kable()
+```{r}
+(plot.venn(med_df, 0.001) | plot.venn(med_df, 0.01)) /
+  (plot.venn(med_df, 0.05) | plot.venn(med_df, 0.25)) +
+  plot_layout(guides = "collect")
+```
+
+```{r}
+plot.overlap <- function(med_df,
+                         method1, method2,
+                         xlab = method1, ylab = method2) {
+  
+  df <- data.frame(A = med_df[[method1]],
+                   B = med_df[[method2]],
+                   mediator = med_df[["mediator"]])
+  
+  p <- ggplot(df, aes(x = A, y = B)) +
+    geom_hline(yintercept = 0.05,
+               linetype = "dashed", colour = "red") +
+    geom_vline(xintercept = 0.05,
+               linetype = "dashed", colour = "red") +
+    geom_point() +
+    geom_text_repel(aes(label = mediator), size = 3) +
+    labs(x = xlab, y = ylab) +
+    theme_classic()
+  
+  return(p)
+}
+```
+
+```{r}
+plot.overlap(med_df,
+             "ACME_adjpval", "ab_pv_hima",
+             "mediate", "hima") /
+plot.overlap(med_df,
+             "ACME_adjpval", "ab_pv_hdma",
+             "mediate", "hdma") /
+plot.overlap(med_df,
+             "ab_pv_hima", "ab_pv_hdma",
+             "hima", "hdma")
 ```

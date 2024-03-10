@@ -1,33 +1,30 @@
 # Mediation Analysis for Microbiome Data
 Giulio Benedetti
 
-## setup
-
 ## Dataset 1
 
 ``` r
 tse <- LahtiWAData()
 ```
 
-``` r
-tse <- tse[ , !is.na(tse$bmi_group)]
-tse <- tse[ , !is.na(tse$nationality)]
-
-colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
-
-tse <- tse[ , tse$nationality %in% c("CentralEurope", "Scandinavia")]
-colData(tse)$nationality <- as.numeric(factor(tse$nationality)) - 1
-```
-
 ### Mediation of alpha diversity
 
 ``` r
-med_out <- mediate_coldata(tse,
-                           outcome = "bmi_group",
-                           treatment = "nationality",
-                           mediator = "diversity",
-                           boot = TRUE, sims = 1000)
+colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
+
+med_out <- mediateColData(tse,
+                          outcome = "bmi_group",
+                          treatment = "nationality",
+                          mediator = "diversity",
+                          covariates = c("sex", "age"),
+                          treat.value = "Scandinavia",
+                          control.value = "CentralEurope",
+                          boot = TRUE, sims = 1000)
 ```
+
+    115 samples removed because of missing data.
+
+    164 samples removed because different from control and treatment.
 
     Running nonparametric bootstrap
 
@@ -40,11 +37,13 @@ summary(med_out)
 
     Nonparametric Bootstrap Confidence Intervals with the Percentile Method
 
+    (Inference Conditional on the Covariate Values Specified in `covariates')
+
                    Estimate 95% CI Lower 95% CI Upper p-value    
-    ACME            -0.0693      -0.1091        -0.03  <2e-16 ***
-    ADE             -0.3339      -0.4909        -0.18  <2e-16 ***
-    Total Effect    -0.4032      -0.5571        -0.25  <2e-16 ***
-    Prop. Mediated   0.1718       0.0822         0.30  <2e-16 ***
+    ACME            -0.0762      -0.1170        -0.04  <2e-16 ***
+    ADE             -0.2784      -0.4234        -0.13  <2e-16 ***
+    Total Effect    -0.3547      -0.4991        -0.20  <2e-16 ***
+    Prop. Mediated   0.2149       0.1138         0.41  <2e-16 ***
     ---
     Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
@@ -62,10 +61,18 @@ plot(med_out)
 ### Mediation of microbiome assay
 
 ``` r
+tse <- tse[ , !is.na(tse$bmi_group)]
+tse <- tse[ , !is.na(tse$nationality)]
+
+tse <- tse[ , tse$nationality %in% c("CentralEurope", "Scandinavia")]
+colData(tse)$nationality <- as.numeric(factor(tse$nationality)) - 1
+
 tse <- transformAssay(tse,
                       method = "clr",
                       pseudocount = 1)
+```
 
+``` r
 hdma_res <- mediate_hdma(A = tse$nationality,
                          M = t(assay(tse, "clr")),
                          Y = tse$bmi_group)
@@ -91,11 +98,11 @@ hdma_res$effects %>% knitr::kable()
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">indirect</td>
-<td style="text-align: right;">0.0335849</td>
+<td style="text-align: right;">0.0499786</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">direct</td>
-<td style="text-align: right;">-0.4367565</td>
+<td style="text-align: right;">-0.4531502</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">total</td>
@@ -136,100 +143,91 @@ hdma_res$contributions %>%
 <td style="text-align: left;">Bacteroides uniformis et rel.</td>
 <td style="text-align: right;">-0.3018067</td>
 <td style="text-align: right;">0.0039828</td>
-<td style="text-align: right;">-0.1295027</td>
-<td style="text-align: right;">0.0424570</td>
-<td style="text-align: right;">0.0390848</td>
-<td style="text-align: right;">0.0424570</td>
+<td style="text-align: right;">-0.1276184</td>
+<td style="text-align: right;">0.0493984</td>
+<td style="text-align: right;">0.0385161</td>
+<td style="text-align: right;">0.0493984</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Bifidobacterium</td>
 <td style="text-align: right;">0.8304660</td>
 <td style="text-align: right;">0.0000000</td>
-<td style="text-align: right;">-0.1141412</td>
-<td style="text-align: right;">0.0254252</td>
-<td style="text-align: right;">-0.0947904</td>
-<td style="text-align: right;">0.0254252</td>
+<td style="text-align: right;">-0.1127872</td>
+<td style="text-align: right;">0.0299746</td>
+<td style="text-align: right;">-0.0936659</td>
+<td style="text-align: right;">0.0299746</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Brachyspira</td>
 <td style="text-align: right;">0.0851664</td>
 <td style="text-align: right;">0.0003479</td>
-<td style="text-align: right;">0.4630257</td>
-<td style="text-align: right;">0.0444303</td>
-<td style="text-align: right;">0.0394342</td>
-<td style="text-align: right;">0.0444303</td>
+<td style="text-align: right;">0.4639224</td>
+<td style="text-align: right;">0.0477823</td>
+<td style="text-align: right;">0.0395106</td>
+<td style="text-align: right;">0.0477823</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Burkholderia</td>
 <td style="text-align: right;">-0.3292429</td>
 <td style="text-align: right;">0.0000000</td>
-<td style="text-align: right;">0.3390329</td>
-<td style="text-align: right;">0.0027965</td>
-<td style="text-align: right;">-0.1116242</td>
-<td style="text-align: right;">0.0027965</td>
+<td style="text-align: right;">0.3402953</td>
+<td style="text-align: right;">0.0031897</td>
+<td style="text-align: right;">-0.1120398</td>
+<td style="text-align: right;">0.0031897</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Clostridium ramosum et rel.</td>
 <td style="text-align: right;">0.1414295</td>
 <td style="text-align: right;">0.0000001</td>
-<td style="text-align: right;">-0.6591253</td>
-<td style="text-align: right;">0.0000944</td>
-<td style="text-align: right;">-0.0932197</td>
-<td style="text-align: right;">0.0000944</td>
+<td style="text-align: right;">-0.6585045</td>
+<td style="text-align: right;">0.0001262</td>
+<td style="text-align: right;">-0.0931319</td>
+<td style="text-align: right;">0.0001262</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Clostridium stercorarium et rel.</td>
 <td style="text-align: right;">0.4932670</td>
 <td style="text-align: right;">0.0000000</td>
-<td style="text-align: right;">0.1512266</td>
-<td style="text-align: right;">0.0278379</td>
-<td style="text-align: right;">0.0745951</td>
-<td style="text-align: right;">0.0278379</td>
+<td style="text-align: right;">0.1524069</td>
+<td style="text-align: right;">0.0293580</td>
+<td style="text-align: right;">0.0751773</td>
+<td style="text-align: right;">0.0293580</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Eggerthella lenta et rel.</td>
 <td style="text-align: right;">0.2133013</td>
 <td style="text-align: right;">0.0000000</td>
-<td style="text-align: right;">0.5154995</td>
-<td style="text-align: right;">0.0003106</td>
-<td style="text-align: right;">0.1099567</td>
-<td style="text-align: right;">0.0003106</td>
+<td style="text-align: right;">0.5168749</td>
+<td style="text-align: right;">0.0003797</td>
+<td style="text-align: right;">0.1102501</td>
+<td style="text-align: right;">0.0003797</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Lactobacillus gasseri et rel.</td>
-<td style="text-align: right;">0.0602800</td>
-<td style="text-align: right;">0.0265373</td>
-<td style="text-align: right;">-0.2545782</td>
-<td style="text-align: right;">0.0470368</td>
-<td style="text-align: right;">-0.0153460</td>
-<td style="text-align: right;">0.0470368</td>
-</tr>
-<tr class="odd">
 <td style="text-align: left;">Megasphaera elsdenii et rel.</td>
 <td style="text-align: right;">-0.1113495</td>
 <td style="text-align: right;">0.0245656</td>
-<td style="text-align: right;">0.2377194</td>
-<td style="text-align: right;">0.0045035</td>
-<td style="text-align: right;">-0.0264699</td>
+<td style="text-align: right;">0.2394733</td>
+<td style="text-align: right;">0.0049181</td>
+<td style="text-align: right;">-0.0266652</td>
 <td style="text-align: right;">0.0245656</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Ruminococcus gnavus et rel.</td>
 <td style="text-align: right;">0.3970603</td>
 <td style="text-align: right;">0.0000000</td>
-<td style="text-align: right;">0.1979132</td>
-<td style="text-align: right;">0.0119258</td>
-<td style="text-align: right;">0.0785835</td>
-<td style="text-align: right;">0.0119258</td>
+<td style="text-align: right;">0.1990542</td>
+<td style="text-align: right;">0.0129413</td>
+<td style="text-align: right;">0.0790365</td>
+<td style="text-align: right;">0.0129413</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Xanthomonadaceae</td>
 <td style="text-align: right;">-0.1809858</td>
 <td style="text-align: right;">0.0000001</td>
-<td style="text-align: right;">-0.2650841</td>
-<td style="text-align: right;">0.0423318</td>
-<td style="text-align: right;">0.0479765</td>
-<td style="text-align: right;">0.0423318</td>
+<td style="text-align: right;">-0.2634616</td>
+<td style="text-align: right;">0.0473508</td>
+<td style="text-align: right;">0.0476828</td>
+<td style="text-align: right;">0.0473508</td>
 </tr>
 </tbody>
 </table>
@@ -249,22 +247,16 @@ tse <- estimateDiversity(tse,
                          assay.type = "relabundance")
 ```
 
-``` r
-tse <- tse[ , !is.na(tse$bmi_group)]
-tse <- tse[ , !is.na(tse$nationality)]
-
-colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
-
-colData(tse)$nationality <- as.numeric(factor(tse$nationality))
-```
-
 ### Mediation of alpha diversity
 
 ``` r
-med_out <- mediate_coldata(tse,
+colData(tse)$bmi_group <- as.numeric(tse$bmi_group)
+
+med_out <- mediateColData(tse,
                           outcome = "bmi_group",
                           treatment = "nationality",
                           mediator = "shannon",
+                          covariates = "timepoint.within.group",
                           boot = TRUE, sims = 1000)
 ```
 
@@ -279,11 +271,13 @@ summary(med_out)
 
     Nonparametric Bootstrap Confidence Intervals with the Percentile Method
 
+    (Inference Conditional on the Covariate Values Specified in `covariates')
+
                    Estimate 95% CI Lower 95% CI Upper p-value    
-    ACME             0.1081       0.0336         0.20   0.002 ** 
-    ADE             -0.4575      -0.6692        -0.22  <2e-16 ***
-    Total Effect    -0.3493      -0.5539        -0.14   0.002 ** 
-    Prop. Mediated  -0.3095      -0.9964        -0.10   0.004 ** 
+    ACME             0.1086       0.0335         0.20   0.012 *  
+    ADE             -0.4580      -0.6735        -0.24  <2e-16 ***
+    Total Effect    -0.3493      -0.5615        -0.15  <2e-16 ***
+    Prop. Mediated  -0.3110      -0.9174        -0.09   0.012 *  
     ---
     Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
@@ -296,49 +290,77 @@ summary(med_out)
 plot(med_out)
 ```
 
-![](example.markdown_strict_files/figure-markdown_strict/unnamed-chunk-13-1.png)
+![](example.markdown_strict_files/figure-markdown_strict/plt-alpha2-1.png)
 
 ### Mediation of microbiome assay
 
 ``` r
+tse <- tse[ , !is.na(tse$bmi_group)]
+tse <- tse[ , !is.na(tse$nationality)]
+
+colData(tse)$nationality <- as.numeric(factor(tse$nationality)) - 1
+
 tse <- transformAssay(tse,
                       method = "clr",
                       pseudocount = 1)
-
-hdma_res <- mediate_hdma(A = tse$nationality,
-                         M = t(assay(tse, "clr")),
-                         Y = tse$bmi_group)
 ```
 
-    Screening mediators...
+``` r
+tse <- tse[ , tse$timepoint.within.group == 2]
 
-    Fitting outcome model with de-biased LASSO...
-
-    Fitting mediator models...
+hdma_res <- mediate_spcma(A = tse$nationality,
+                         M = t(assay(tse, "clr")),
+                         Y = tse$bmi_group)#,
+                         #C1 = matrix(tse$timepoint.within.group))
+```
 
 ``` r
 hdma_res$effects %>% knitr::kable()
 ```
 
 <table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 18%" />
+<col style="width: 17%" />
+<col style="width: 18%" />
+<col style="width: 19%" />
+<col style="width: 17%" />
+</colgroup>
 <thead>
 <tr class="header">
 <th style="text-align: left;">effect</th>
-<th style="text-align: right;">estimate</th>
+<th style="text-align: left;">estimate</th>
+<th style="text-align: left;">se</th>
+<th style="text-align: left;">cl_2.5%</th>
+<th style="text-align: left;">cl_97.5%</th>
+<th style="text-align: left;">pv</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">indirect</td>
-<td style="text-align: right;">-0.0564957</td>
+<td style="text-align: left;">0.138450307443018</td>
+<td style="text-align: left;">0.275989632763603</td>
+<td style="text-align: left;">-0.399804600514614</td>
+<td style="text-align: left;">0.664133696200351</td>
+<td style="text-align: left;">0.615913465779439</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">direct</td>
-<td style="text-align: right;">-0.2928514</td>
+<td style="text-align: left;">-0.507135486432648</td>
+<td style="text-align: left;">0.314701267996377</td>
+<td style="text-align: left;">-1.12052623113302</td>
+<td style="text-align: left;">0.0904406587693171</td>
+<td style="text-align: left;">0.10707466744474</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">total</td>
-<td style="text-align: right;">-0.3493471</td>
+<td style="text-align: left;">-0.36868517898963</td>
+<td style="text-align: left;">0.153427902123304</td>
+<td style="text-align: left;">-0.673292066998711</td>
+<td style="text-align: left;">-0.0818922251682425</td>
+<td style="text-align: left;">0.016</td>
 </tr>
 </tbody>
 </table>
@@ -351,61 +373,51 @@ hdma_res$contributions %>%
 
 <table>
 <colgroup>
-<col style="width: 34%" />
-<col style="width: 11%" />
+<col style="width: 6%" />
 <col style="width: 10%" />
+<col style="width: 12%" />
 <col style="width: 11%" />
-<col style="width: 10%" />
+<col style="width: 12%" />
 <col style="width: 11%" />
-<col style="width: 10%" />
+<col style="width: 12%" />
+<col style="width: 13%" />
+<col style="width: 6%" />
 </colgroup>
 <thead>
 <tr class="header">
+<th style="text-align: left;"></th>
 <th style="text-align: left;">mediator</th>
 <th style="text-align: right;">alpha</th>
-<th style="text-align: right;">alpha_pv</th>
 <th style="text-align: right;">beta</th>
-<th style="text-align: right;">beta_pv</th>
 <th style="text-align: right;">alpha_beta</th>
+<th style="text-align: right;">ab_se</th>
+<th style="text-align: right;">ab_cl_2.5%</th>
+<th style="text-align: right;">ab_cl_97.5%</th>
 <th style="text-align: right;">ab_pv</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">Bifidobacterium</td>
-<td style="text-align: right;">-0.3659494</td>
-<td style="text-align: right;">0.0028767</td>
-<td style="text-align: right;">0.1807079</td>
-<td style="text-align: right;">0.0202763</td>
-<td style="text-align: right;">-0.0661299</td>
-<td style="text-align: right;">0.0202763</td>
+<td style="text-align: left;">spc7</td>
+<td style="text-align: left;">spc7</td>
+<td style="text-align: right;">1.8839684</td>
+<td style="text-align: right;">0.1311627</td>
+<td style="text-align: right;">0.2471064</td>
+<td style="text-align: right;">0.0990699</td>
+<td style="text-align: right;">0.0897677</td>
+<td style="text-align: right;">0.4770913</td>
+<td style="text-align: right;">0.00</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Moraxellaceae</td>
-<td style="text-align: right;">0.3247997</td>
-<td style="text-align: right;">0.0000000</td>
-<td style="text-align: right;">-0.3141093</td>
-<td style="text-align: right;">0.0489910</td>
-<td style="text-align: right;">-0.1020226</td>
-<td style="text-align: right;">0.0489910</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Sporobacter termitidis et rel.</td>
-<td style="text-align: right;">0.3940421</td>
-<td style="text-align: right;">0.0009216</td>
-<td style="text-align: right;">0.2015013</td>
-<td style="text-align: right;">0.0297575</td>
-<td style="text-align: right;">0.0794000</td>
-<td style="text-align: right;">0.0297575</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Subdoligranulum variable at rel.</td>
-<td style="text-align: right;">-0.3198996</td>
-<td style="text-align: right;">0.0036013</td>
-<td style="text-align: right;">0.1767934</td>
-<td style="text-align: right;">0.0372783</td>
-<td style="text-align: right;">-0.0565562</td>
-<td style="text-align: right;">0.0372783</td>
+<td style="text-align: left;">spc17</td>
+<td style="text-align: left;">spc17</td>
+<td style="text-align: right;">-0.9107473</td>
+<td style="text-align: right;">0.1804736</td>
+<td style="text-align: right;">-0.1643658</td>
+<td style="text-align: right;">0.0778319</td>
+<td style="text-align: right;">-0.3450632</td>
+<td style="text-align: right;">-0.0425960</td>
+<td style="text-align: right;">0.01</td>
 </tr>
 </tbody>
 </table>
